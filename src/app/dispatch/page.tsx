@@ -88,9 +88,17 @@ export default async function DispatchPage() {
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    {supervisor && (
-                      <ShiftActions shiftId={shift.id} status={shift.status as ShiftStatus} />
-                    )}
+                    <div className="flex items-center justify-end gap-3">
+                      <Link
+                        href={`/dispatch/${shift.id}`}
+                        className="text-xs text-kc-blue-600 hover:underline"
+                      >
+                        Manage
+                      </Link>
+                      {supervisor && (
+                        <ShiftActions shiftId={shift.id} status={shift.status as ShiftStatus} />
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))

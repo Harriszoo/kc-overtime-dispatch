@@ -207,3 +207,27 @@ CREATE TRIGGER trg_personnel_updated_at
 CREATE TRIGGER trg_shifts_updated_at
     BEFORE UPDATE ON shifts
     FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+-- ─── Call Log ─────────────────────────────────────────────────────────────────
+-- Tracks each overtime offer made to an eligible officer for a given shift.
+-- Used for union call-order compliance (inverse seniority) and grievance defense.
+
+CREATE TABLE call_log (
+    id           UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+    shift_id     UUID        NOT NULL REFERENCES shifts(id) ON DELETE CASCADE,
+    officer_id   UUID        NOT NULL REFERENCES personnel(id),
+    call_order   SMALLINT    NOT NULL,            -- 1 = first officer offered
+    called_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    called_by    TEXT        NOT NULL,            -- display name of supervisor
+    response     TEXT        CHECK (response IN ('accepted','declined','no_answer')),
+    responded_at TIMESTAMPTZ,
+    notes        TEXT,
+    UNIQUE (shift_id, officer_id)                 -- each officer offered at most once per shift
+);
+
+CREATE INDEX idx_call_log_shift ON call_log (shift_id, call_order);
+
+-- Auth columns (added via migration; listed here for fresh installs)
+ALTER TABLE personnel
+    ADD COLUMN IF NOT EXISTS email         TEXT UNIQUE,
+    ADD COLUMN IF NOT EXISTS password_hash TEXT;
