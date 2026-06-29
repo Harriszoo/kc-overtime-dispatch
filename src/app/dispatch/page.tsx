@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getShifts } from "@/lib/shifts";
 import ShiftActions from "@/components/dispatch/ShiftActions";
 import type { ShiftStatus } from "@/types";
+import { auth, isSupervisor } from "@/auth";
 
 const STATUS_BADGE: Record<ShiftStatus, string> = {
   pending:   "bg-yellow-100 text-yellow-800",
@@ -20,7 +21,8 @@ function formatShiftTime(val: Date | string) {
 }
 
 export default async function DispatchPage() {
-  const all = await getShifts();
+  const [session, all] = await Promise.all([auth(), getShifts()]);
+  const supervisor = isSupervisor(session?.user.rank ?? "");
   const shifts = all.filter((s) => s.status !== "cancelled");
 
   const pending  = shifts.filter((s) => s.status === "pending").length;
@@ -86,7 +88,9 @@ export default async function DispatchPage() {
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    <ShiftActions shiftId={shift.id} status={shift.status as ShiftStatus} />
+                    {supervisor && (
+                      <ShiftActions shiftId={shift.id} status={shift.status as ShiftStatus} />
+                    )}
                   </td>
                 </tr>
               ))

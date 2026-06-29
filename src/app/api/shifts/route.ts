@@ -3,6 +3,7 @@ import { getShifts, createShift } from "@/lib/shifts";
 import { getOfficerById } from "@/lib/officers";
 import { CreateShiftSchema, ShiftAssignmentRequestSchema, checkAntiFatigueWindow } from "@/types";
 import type { ShiftPost } from "@/types";
+import { auth, isSupervisor } from "@/auth";
 
 export async function GET(request: NextRequest) {
   const p = request.nextUrl.searchParams;
@@ -19,6 +20,12 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const session = await auth();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!isSupervisor(session.user.rank)) {
+    return NextResponse.json({ error: "Supervisor role required" }, { status: 403 });
+  }
+
   let body: unknown;
   try {
     body = await request.json();
