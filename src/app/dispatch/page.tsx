@@ -1,8 +1,30 @@
 import Link from "next/link";
 import { getShifts } from "@/lib/shifts";
+import ShiftActions from "@/components/dispatch/ShiftActions";
+import type { ShiftStatus } from "@/types";
+
+const STATUS_BADGE: Record<ShiftStatus, string> = {
+  pending:   "bg-yellow-100 text-yellow-800",
+  approved:  "bg-green-100  text-green-800",
+  active:    "bg-blue-100   text-blue-800",
+  completed: "bg-gray-100   text-gray-600",
+  cancelled: "bg-red-100    text-red-700",
+};
+
+function formatShiftTime(val: Date | string) {
+  return new Date(val).toLocaleString("en-US", {
+    month: "short", day: "numeric",
+    hour: "numeric", minute: "2-digit",
+    hour12: true, timeZoneName: "short",
+  });
+}
 
 export default async function DispatchPage() {
-  const shifts = await getShifts({ status: "pending" });
+  const all = await getShifts();
+  const shifts = all.filter((s) => s.status !== "cancelled");
+
+  const pending  = shifts.filter((s) => s.status === "pending").length;
+  const approved = shifts.filter((s) => s.status === "approved").length;
 
   return (
     <div>
@@ -10,7 +32,7 @@ export default async function DispatchPage() {
         <div>
           <h1 className="text-2xl font-bold">Overtime Dispatch Board</h1>
           <p className="mt-1 text-sm text-gray-500">
-            {shifts.length} pending assignment{shifts.length !== 1 ? "s" : ""}
+            {pending} pending · {approved} approved
           </p>
         </div>
         <Link
@@ -39,7 +61,7 @@ export default async function DispatchPage() {
             {shifts.length === 0 ? (
               <tr>
                 <td colSpan={7} className="px-4 py-10 text-center text-sm text-gray-400">
-                  No pending shifts.
+                  No active shifts.
                 </td>
               </tr>
             ) : (
@@ -50,24 +72,21 @@ export default async function DispatchPage() {
                     {shift.last_name}, {shift.first_name}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-600">
-                    {new Date(shift.shift_start).toLocaleString()}
+                    {formatShiftTime(shift.shift_start)}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-600">
-                    {new Date(shift.shift_end).toLocaleString()}
+                    {formatShiftTime(shift.shift_end)}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-600">{shift.shift_type}</td>
                   <td className="px-4 py-3">
-                    <span className="rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-800">
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_BADGE[shift.status as ShiftStatus]}`}
+                    >
                       {shift.status}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-right text-sm">
-                    <Link
-                      href={`/roster/${shift.officer_id}`}
-                      className="text-kc-blue-600 hover:underline"
-                    >
-                      View officer
-                    </Link>
+                  <td className="px-4 py-3">
+                    <ShiftActions shiftId={shift.id} status={shift.status as ShiftStatus} />
                   </td>
                 </tr>
               ))

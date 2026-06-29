@@ -2,12 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Personnel, ShiftPost, FatigueCheckResult, ShiftRow } from "@/types";
+import type { Personnel, ShiftPost, FatigueCheckResult } from "@/types";
 import { ShiftPostEnum, checkAntiFatigueWindow } from "@/types";
 import FatigueAlert from "./FatigueAlert";
 import EligibleOfficerList from "./EligibleOfficerList";
-
-// ShiftRow is used here for the fatigue check (includes officer_id + status)
 import type { ShiftRow as ShiftRowLib } from "@/lib/shifts";
 
 type Props = { officers: Personnel[] };
