@@ -13,6 +13,7 @@ const NAV = [
   { href: "/dispatch", label: "Dispatch"  },
   { href: "/schedule", label: "Schedule"  },
   { href: "/roster",   label: "Roster"    },
+  { href: "/audit",    label: "Audit"     },
 ];
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {

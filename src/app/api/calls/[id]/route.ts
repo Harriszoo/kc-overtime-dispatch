@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { updateCallResponse } from "@/lib/calls";
-import { updateShiftStatus } from "@/lib/shifts";
-import sql from "@/lib/db";
+import { updateShiftStatus, getShiftById } from "@/lib/shifts";
 import { auth, isSupervisor } from "@/auth";
+import { logAudit } from "@/lib/audit";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -30,16 +30,45 @@ export async function PATCH(request: NextRequest, { params }: Ctx) {
   );
   if (!entry) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  // If accepted, auto-approve the shift
-  if (response === "accepted") {
-    const shiftRows = await sql<{ id: string; status: string }[]>`
-      SELECT id, status FROM shifts WHERE id = ${entry.shift_id} LIMIT 1
-    `;
-    const shift = shiftRows[0];
-    if (shift && shift.status === "pending") {
-      await updateShiftStatus(shift.id, "approved", session.user.name ?? null);
-    }
+  const shift = await getShiftById(entry.shift_id);
+
+  // Auto-approve the shift when an officer accepts
+  if (response === "accepted" && shift?.status === "pending") {
+    await updateShiftStatus(shift.id, "approved", session.user.personnelId ?? null);
+    logAudit({
+      actorName:  session.user.name ?? "Unknown",
+      actorEmail: session.user.email,
+      action:     "shift.approved",
+      entityType: "shift",
+      entityId:   shift.id,
+      payload: {
+        shift_id: shift.id,
+        post:     shift.post,
+        officer:  `${entry.last_name}, ${entry.first_name}`,
+        new_status: "approved",
+      },
+    }).catch(() => {});
   }
+
+  const auditAction =
+    response === "accepted"  ? "call.accepted"  :
+    response === "declined"  ? "call.declined"  :
+    "call.no_answer";
+
+  logAudit({
+    actorName:  session.user.name ?? "Unknown",
+    actorEmail: session.user.email,
+    action:     auditAction,
+    entityType: "call_log",
+    entityId:   id,
+    payload: {
+      shift_id:   entry.shift_id,
+      post:       shift?.post ?? "",
+      officer:    `${entry.last_name}, ${entry.first_name}`,
+      call_order: entry.call_order,
+      notes:      notes ?? null,
+    },
+  }).catch(() => {});
 
   return NextResponse.json(entry);
 }

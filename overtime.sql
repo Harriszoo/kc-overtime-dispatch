@@ -227,6 +227,25 @@ CREATE TABLE call_log (
 
 CREATE INDEX idx_call_log_shift ON call_log (shift_id, call_order);
 
+-- ─── Audit Log ───────────────────────────────────────────────────────────────
+-- Immutable record of every write action performed in the application.
+-- Used for union grievance defense, accountability, and compliance reporting.
+
+CREATE TABLE audit_log (
+    id           UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+    actor_name   TEXT        NOT NULL,
+    actor_email  TEXT,
+    action       TEXT        NOT NULL,   -- e.g. 'shift.created', 'call.declined'
+    entity_type  TEXT        NOT NULL,   -- 'shift' | 'call_log'
+    entity_id    UUID        NOT NULL,
+    payload      JSONB       NOT NULL DEFAULT '{}',
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_audit_log_created_at  ON audit_log (created_at DESC);
+CREATE INDEX idx_audit_log_entity      ON audit_log (entity_type, entity_id);
+CREATE INDEX idx_audit_log_actor_email ON audit_log (actor_email);
+
 -- Auth columns (added via migration; listed here for fresh installs)
 ALTER TABLE personnel
     ADD COLUMN IF NOT EXISTS email         TEXT UNIQUE,

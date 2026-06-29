@@ -4,6 +4,7 @@ import { getOfficerById } from "@/lib/officers";
 import { CreateShiftSchema, ShiftAssignmentRequestSchema, checkAntiFatigueWindow } from "@/types";
 import type { ShiftPost } from "@/types";
 import { auth, isSupervisor } from "@/auth";
+import { logAudit } from "@/lib/audit";
 
 export async function GET(request: NextRequest) {
   const p = request.nextUrl.searchParams;
@@ -66,6 +67,21 @@ export async function POST(request: NextRequest) {
 
   try {
     const shift = await createShift(parsed.data);
+    logAudit({
+      actorName:  session.user.name ?? "Unknown",
+      actorEmail: session.user.email,
+      action:     "shift.created",
+      entityType: "shift",
+      entityId:   shift.id,
+      payload: {
+        shift_id:    shift.id,
+        post:        shift.post,
+        officer:     `${officer.last_name}, ${officer.first_name}`,
+        shift_start: shift.shift_start,
+        shift_end:   shift.shift_end,
+        shift_type:  shift.shift_type,
+      },
+    }).catch(() => {});
     return NextResponse.json(shift, { status: 201 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "";
